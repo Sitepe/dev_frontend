@@ -5,15 +5,16 @@ import UserCartItemsContent from "@/components/shopping-view/cart-items-content"
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { createNewOrder } from "@/store/shop/order-slice";
-import { Navigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 import { useToast } from "@/components/ui/use-toast";
 
 function ShoppingCheckout() {
+  const navigate = useNavigate();
   const { cartItems } = useSelector((state) => state.shopCart);
   const { user } = useSelector((state) => state.auth);
   const { approvalURL } = useSelector((state) => state.shopOrder);
   const [currentSelectedAddress, setCurrentSelectedAddress] = useState(null);
-  const [isPaymentStart, setIsPaymemntStart] = useState(false);
+ 
   const dispatch = useDispatch();
   const { toast } = useToast();
 
@@ -32,64 +33,73 @@ function ShoppingCheckout() {
         )
       : 0;
 
-  function handleInitiatePaypalPayment() {
-    if (cartItems.length === 0) {
-      toast({
-        title: "Your cart is empty. Please add items to proceed",
-        variant: "destructive",
-      });
-
-      return;
-    }
-    if (currentSelectedAddress === null) {
-      toast({
-        title: "Please select one address to proceed.",
-        variant: "destructive",
-      });
-
-      return;
-    }
-
-    const orderData = {
-      userId: user?.id,
-      cartId: cartItems?._id,
-      cartItems: cartItems.items.map((singleCartItem) => ({
-        productId: singleCartItem?.productId,
-        title: singleCartItem?.title,
-        image: singleCartItem?.image,
-        price:
-          singleCartItem?.salePrice > 0
-            ? singleCartItem?.salePrice
-            : singleCartItem?.price,
-        quantity: singleCartItem?.quantity,
-      })),
-      addressInfo: {
-        addressId: currentSelectedAddress?._id,
-        address: currentSelectedAddress?.address,
-        city: currentSelectedAddress?.city,
-        pincode: currentSelectedAddress?.pincode,
-        phone: currentSelectedAddress?.phone,
-        notes: currentSelectedAddress?.notes,
-      },
-      orderStatus: "pending",
-      paymentMethod: "paypal",
-      paymentStatus: "pending",
-      totalAmount: totalCartAmount,
-      orderDate: new Date(),
-      orderUpdateDate: new Date(),
-      paymentId: "",
-      payerId: "",
-    };
-
-    dispatch(createNewOrder(orderData)).then((data) => {
-      console.log(data, "sangam");
-      if (data?.payload?.success) {
-        setIsPaymemntStart(true);
-      } else {
-        setIsPaymemntStart(false);
+      function handleCashOnDelivery() {
+        if (cartItems.length === 0) {
+          toast({
+            title: "Your cart is empty. Please add items to proceed",
+            variant: "destructive",
+          });
+          return;
+        }
+      
+        if (currentSelectedAddress === null) {
+          toast({
+            title: "Please select one address to proceed.",
+            variant: "destructive",
+          });
+          return;
+        }
+      
+        const orderData = {
+          userId: user?.id,
+          cartId: cartItems?._id,
+          cartItems: cartItems.items.map((singleCartItem) => ({
+            productId: singleCartItem?.productId,
+            title: singleCartItem?.title,
+            image: singleCartItem?.image,
+            price:
+              singleCartItem?.salePrice > 0
+                ? singleCartItem?.salePrice
+                : singleCartItem?.price,
+            quantity: singleCartItem?.quantity,
+          })),
+          addressInfo: {
+            addressId: currentSelectedAddress?._id,
+            address: currentSelectedAddress?.address,
+            city: currentSelectedAddress?.city,
+            pincode: currentSelectedAddress?.pincode,
+            phone: currentSelectedAddress?.phone,
+            notes: currentSelectedAddress?.notes,
+          },
+          orderStatus: "pending",
+          paymentMethod: "CashOnDelivery", // Updated payment method
+          paymentStatus: "pending",
+          totalAmount: totalCartAmount,
+          orderDate: new Date(),
+          orderUpdateDate: new Date(),
+          paymentId: "", // Not needed for COD
+          payerId: "", // Not needed for COD
+        };
+      
+        dispatch(createNewOrder(orderData)).then((data) => {
+          if (data?.payload?.success) {
+            toast({
+              title: "Order placed successfully!",
+              description: "Your order will be delivered soon.",
+              variant: "success",
+            });
+            // Optionally, you can redirect the user to an order confirmation page
+            navigate("/shop/account")
+          } else {
+            toast({
+              title: "Failed to place order.",
+              description: "Please try again.",
+              variant: "destructive",
+            });
+          }
+        });
       }
-    });
-  }
+
 
   if (approvalURL) {
     window.location.href = approvalURL;
@@ -118,10 +128,8 @@ function ShoppingCheckout() {
             </div>
           </div>
           <div className="mt-4 w-full">
-            <Button onClick={handleInitiatePaypalPayment} className="w-full">
-              {isPaymentStart
-                ? "Processing Paypal Payment..."
-                : "Checkout with Paypal"}
+            <Button onClick={handleCashOnDelivery} className="w-full">
+              Continue with Cash on Delivery
             </Button>
           </div>
         </div>
